@@ -12,7 +12,7 @@ import tf.transformations as tfm
 
 
 from apriltags_ros.msg import AprilTagDetectionArray
-from helper import transformPose, pubFrame, cross2d, lookupTransform, pose2poselist, invPoselist, diffrad
+from helper import transformPose, pubFrame, cross2d, lookupTransform, pose2poselist, invPoselist, diffrad, poselist2pose
 
 
 rospy.init_node('apriltag_navi', anonymous=True)
@@ -51,14 +51,16 @@ def constant_vel_loop():
 def apriltag_callback(data):
     # use apriltag pose detection to find where is the robot
     if len(data.detections)!=0:  # check if apriltag is detected
-    	detection = data.detections[0]
-    	print detection.pose 
-    	if detection.id == 21:   # tag id is the correct one
-		# Use the functions in helper.py to do the following 
-		# step 1. convert the pose to poselist Hint: pose data => detection.pose.pose 
-		# step 2. do the matrix manipulation 
-		# step 3. publish the base frame w.r.t the map frame
-    		# note: tf listener and broadcaster are initalize in line 19~20
+        detection = data.detections[0]
+        print detection.pose 
+        if detection.id == 21:   # tag id is the correct one
+            det_poselist = helper.pose2poselist(detection.pose.pose)
+            basetag_poselist = transformPose(lr, det_poselist, '/camera', '/robot_base')
+            basetag_poselist_inv = invPoselist(basetag_poselist)
+            mapbase_poselist = transformPose(lr, basetag_poselist_inv, '/apriltag', '/map')
+            mapbase_pose = poselist2pose(mapbase_poselist)
+            pubFrame(br, mapbase_pose)
+
 
 ## navigation control loop (No need to modify)
 def navi_loop():
